@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 디지털 책갈피 - 그림책으로 키우는 문해력</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        },
+                        amber: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            user-select: none;
+        }
+
+        /* High Contrast Mode Styles */
+        body.high-contrast {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+        }
+        body.high-contrast .bg-white {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            border-color: #475569 !important;
+        }
+        body.high-contrast .text-gray-600,
+        body.high-contrast .text-gray-700,
+        body.high-contrast .text-slate-600 {
+            color: #cbd5e1 !important;
+        }
+
+        /* Stamp Animation */
+        .stamp-animate {
+            animation: stampPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes stampPop {
+            0% { transform: scale(3) rotate(-15deg); opacity: 0; }
+            50% { transform: scale(0.9) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        /* Custom Bounce */
+        .hover-bounce:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Active tab indicator */
+        .active-tab {
+            border-bottom: 4px solid #16a34a;
+            color: #15803d;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Top Bar Navigation & UDL Controls -->
+    <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-500 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xl shadow-md">
+                    🔖
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl text-slate-800 leading-tight">2026 디지털 책갈피</h1>
+                    <p class="text-xs text-emerald-600 font-semibold">그림책으로 키우는 문해력 (EBS 임금님 귀는 당나귀 귀)</p>
+                </div>
+            </div>
+
+            <!-- UDL Accessibility Buttons -->
+            <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                <button onclick="toggleTTSMode()" id="ttsBtn" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-white text-slate-700 shadow-sm hover:bg-emerald-50 hover:text-emerald-700 transition flex items-center gap-1.5" title="음성 읽기 기능">
+                    <i class="fa-solid fa-volume-high text-emerald-600"></i> <span class="hidden sm:inline">음성 읽기</span>
+                </button>
+                <button onclick="changeFontSize(1)" class="w-8 h-8 font-extrabold rounded-xl bg-white text-slate-700 shadow-sm hover:bg-slate-200 transition text-sm" title="글자 크게">가+</button>
+                <button onclick="changeFontSize(-1)" class="w-8 h-8 font-extrabold rounded-xl bg-white text-slate-700 shadow-sm hover:bg-slate-200 transition text-xs" title="글자 작게">가-</button>
+                <button onclick="toggleHighContrast()" class="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-800 text-white shadow-sm hover:bg-slate-900 transition flex items-center gap-1" title="고대비 모드">
+                    <i class="fa-solid fa-circle-half-stroke"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl w-full mx-auto px-4 py-6 flex-grow space-y-6">
+
+        <!-- Student Information Card -->
+        <section class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+                        👤
+                    </div>
+                    <div>
+                        <div class="text-emerald-100 text-xs font-semibold">천천히, 그러나 확실하게 성장하는 배움 노트</div>
+                        <div class="text-xl font-black flex items-center gap-2">
+                            <span id="displayStudentName">학습자 이름을 입력하세요</span>
+                            <button onclick="openStudentModal()" class="text-xs bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg text-white transition font-medium">
+                                <i class="fa-solid fa-pen text-xs"></i> 정보 수정
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right bg-black/10 px-4 py-2 rounded-2xl border border-white/10 text-xs">
+                    <div class="text-emerald-200">참여 학생 정보</div>
+                    <div class="font-bold text-sm" id="displayStudentInfo">학교명 / 학번</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step-by-Step Praise Stamp Board (배움으로 성장하기) -->
+        <section class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">💮</span>
+                    <h2 class="text-lg font-black text-slate-800">[배움으로 성장하기] 단계별 칭찬 도장판</h2>
+                </div>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full">
+                    진도율: <span id="stampProgressText">0</span> / 4 단계 완료
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <!-- Stamp Slot 1 -->
+                <div id="stampBox1" onclick="switchTab(1)" class="cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-3 text-center transition relative bg-slate-50 flex flex-col items-center justify-center min-h-[110px]">
+                    <span class="text-xs text-slate-500 font-bold mb-1">1단계: 스토리 이해</span>
+                    <div id="stampArea1" class="my-1">
+                        <span class="text-2xl opacity-30">🧩</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-medium">순서대로 착착!</span>
+                </div>
+
+                <!-- Stamp Slot 2 -->
+                <div id="stampBox2" onclick="switchTab(2)" class="cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-3 text-center transition relative bg-slate-50 flex flex-col items-center justify-center min-h-[110px]">
+                    <span class="text-xs text-slate-500 font-bold mb-1">2단계: 기초 어휘</span>
+                    <div id="stampArea2" class="my-1">
+                        <span class="text-2xl opacity-30">📚</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-medium">어휘력 쑥쑥!</span>
+                </div>
+
+                <!-- Stamp Slot 3 -->
+                <div id="stampBox3" onclick="switchTab(3)" class="cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-3 text-center transition relative bg-slate-50 flex flex-col items-center justify-center min-h-[110px]">
+                    <span class="text-xs text-slate-500 font-bold mb-1">3단계: 스토리 퀴즈</span>
+                    <div id="stampArea3" class="my-1">
+                        <span class="text-2xl opacity-30">❓</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-medium">정답 쏙쏙!</span>
+                </div>
+
+                <!-- Stamp Slot 4 -->
+                <div id="stampBox4" onclick="switchTab(4)" class="cursor-pointer border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-3 text-center transition relative bg-slate-50 flex flex-col items-center justify-center min-h-[110px]">
+                    <span class="text-xs text-slate-500 font-bold mb-1">4단계: 배움 노트</span>
+                    <div id="stampArea4" class="my-1">
+                        <span class="text-2xl opacity-30">🌱</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 font-medium">마음 자존감 UP!</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab Navigation Buttons -->
+        <div class="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-sm overflow-x-auto text-sm font-extrabold gap-1">
+            <button onclick="switchTab(1)" id="tabBtn1" class="flex-1 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap active-tab bg-emerald-50 text-emerald-700">
+                <span>🧩</span> 1단계: 스토리 이해
+            </button>
+            <button onclick="switchTab(2)" id="tabBtn2" class="flex-1 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap text-slate-500 hover:text-slate-800">
+                <span>📚</span> 2단계: 기초 어휘
+            </button>
+            <button onclick="switchTab(3)" id="tabBtn3" class="flex-1 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap text-slate-500 hover:text-slate-800">
+                <span>❓</span> 3단계: 스토리 퀴즈
+            </button>
+            <button onclick="switchTab(4)" id="tabBtn4" class="flex-1 py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap text-slate-500 hover:text-slate-800">
+                <span>🌱</span> 4단계: 배움 노트 & 수료증
+            </button>
+        </div>
+
+        <!-- STEP 1: Story Sequencing Module -->
+        <div id="tabContent1" class="tab-content space-y-4">
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-5">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-md">1단계</span>
+                        <h3 class="text-xl font-extrabold text-slate-800 mt-1">🧩 이야기 순서대로 나열하기</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            이야기의 흐름에 맞게 <b>1번부터 6번까지</b> 순서 숫자를 지정하세요. (드롭다운 메뉴에서 번호 선택)
+                        </p>
+                    </div>
+                    <button onclick="speakText('1단계. 이야기 순서대로 나열하기. 이야기의 흐름에 맞게 1번부터 6번까지 숫자를 지정해 보세요.')" class="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition" title="읽어주기">
+                        <i class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Cards Container -->
+                <div id="sequenceList" class="space-y-3">
+                    <!-- Dynamic rendering via JavaScript -->
+                </div>
+
+                <!-- Submit / Reset Buttons -->
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <button onclick="resetStep1()" class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> 다시하기
+                    </button>
+                    <button onclick="checkStep1()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> 정답 확인하고 1단계 도장 받기!
+                    </button>
+                </div>
+                <div id="step1Feedback" class="hidden p-4 rounded-2xl font-bold text-sm text-center"></div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Basic Vocabulary Module -->
+        <div id="tabContent2" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-md">2단계</span>
+                        <h3 class="text-xl font-extrabold text-slate-800 mt-1">📚 기초 어휘 파악하기</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            낱말과 뜻을 올바르게 매칭하고, 보기의 단어로 빈칸 문장을 완성하세요.
+                        </p>
+                    </div>
+                    <button onclick="speakText('2단계. 기초 어휘 파악하기. 낱말과 알맞은 뜻을 찾아 선택하고 빈칸을 채워보세요.')" class="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition" title="읽어주기">
+                        <i class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- 1. Vocabulary Matching -->
+                <div class="space-y-4">
+                    <h4 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <span class="w-6 h-6 bg-emerald-500 text-white rounded-full text-xs flex items-center justify-center font-extrabold">1</span>
+                        낱말과 뜻 연결하기
+                    </h4>
+                    
+                    <div id="vocabMatchingContainer" class="space-y-3">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- 2. Fill in the sentence -->
+                <div class="space-y-4 pt-4 border-t border-slate-100">
+                    <h4 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <span class="w-6 h-6 bg-emerald-500 text-white rounded-full text-xs flex items-center justify-center font-extrabold">2</span>
+                        낱말 활용하여 문장 완성하기
+                    </h4>
+
+                    <!-- Word Bank Chips -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-black text-slate-500 mr-2">[ 보기 ]</span>
+                        <span class="bg-white border border-slate-300 font-bold text-slate-700 text-xs px-3 py-1.5 rounded-xl shadow-sm">신하</span>
+                        <span class="bg-white border border-slate-300 font-bold text-slate-700 text-xs px-3 py-1.5 rounded-xl shadow-sm">소문</span>
+                        <span class="bg-white border border-slate-300 font-bold text-slate-700 text-xs px-3 py-1.5 rounded-xl shadow-sm">괴로워하다</span>
+                        <span class="bg-white border border-slate-300 font-bold text-slate-700 text-xs px-3 py-1.5 rounded-xl shadow-sm">귀를 기울이다</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2 text-sm font-medium">
+                            <span>1. 비밀을 말하지 못해 마음이 많이</span>
+                            <select id="fillBlank1" class="border-2 border-emerald-300 bg-emerald-50 rounded-xl px-3 py-1.5 font-extrabold text-emerald-800 focus:outline-none">
+                                <option value="">(선택)</option>
+                                <option value="신하">신하</option>
+                                <option value="소문">소문</option>
+                                <option value="괴로워하다">괴로워했습니다</option>
+                                <option value="귀를 기울이다">귀를 기울였습니다</option>
+                            </select>
+                            <span>.</span>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2 text-sm font-medium">
+                            <span>2. 대나무 숲의 이야기는 나라 전체에</span>
+                            <select id="fillBlank2" class="border-2 border-emerald-300 bg-emerald-50 rounded-xl px-3 py-1.5 font-extrabold text-emerald-800 focus:outline-none">
+                                <option value="">(선택)</option>
+                                <option value="신하">신하</option>
+                                <option value="소문">소문</option>
+                                <option value="괴로워하다">괴로워했습니다</option>
+                                <option value="귀를 기울이다">귀를 기울였습니다</option>
+                            </select>
+                            <span>으로 퍼졌습니다.</span>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2 text-sm font-medium">
+                            <span>3. 훌륭한 임금님은 백성들의 목소리에</span>
+                            <select id="fillBlank3" class="border-2 border-emerald-300 bg-emerald-50 rounded-xl px-3 py-1.5 font-extrabold text-emerald-800 focus:outline-none">
+                                <option value="">(선택)</option>
+                                <option value="신하">신하</option>
+                                <option value="소문">소문</option>
+                                <option value="괴로워하다">괴로워했습니다</option>
+                                <option value="귀를 기울이다">귀를 기울였습니다</option>
+                            </select>
+                            <span>.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end pt-4 border-t border-slate-100">
+                    <button onclick="checkStep2()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> 어휘 평가 완료하고 2단계 도장 받기!
+                    </button>
+                </div>
+                <div id="step2Feedback" class="hidden p-4 rounded-2xl font-bold text-sm text-center"></div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Comprehension Quiz Module -->
+        <div id="tabContent3" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-md">3단계</span>
+                        <h3 class="text-xl font-extrabold text-slate-800 mt-1">❓ 스토리 이해 퀴즈 (5문항)</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            문제를 차근차근 읽고 올바른 답을 고르세요. (3지선다 & O/X 퀴즈)
+                        </p>
+                    </div>
+                    <button onclick="speakText('3단계. 스토리 이해 퀴즈 5문항. 문제를 잘 읽고 알맞은 답을 골라보세요.')" class="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition" title="읽어주기">
+                        <i class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+
+                <div id="quizContainer" class="space-y-6">
+                    <!-- Dynamic rendering by JS -->
+                </div>
+
+                <div class="flex items-center justify-end pt-4 border-t border-slate-100">
+                    <button onclick="checkStep3()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> 퀴즈 채점하고 3단계 도장 받기!
+                    </button>
+                </div>
+                <div id="step3Feedback" class="hidden p-4 rounded-2xl font-bold text-sm text-center"></div>
+            </div>
+        </div>
+
+        <!-- STEP 4: Learning Note & 2026 Digital Bookmark Certificate -->
+        <div id="tabContent4" class="tab-content space-y-4 hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-md">4단계</span>
+                        <h3 class="text-xl font-extrabold text-slate-800 mt-1">🌱 이야기가 주는 교훈으로 배움노트 작성하기</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            오늘의 핵심 가치는 <b>[자기존중]</b>입니다. 나를 사랑하는 문장을 완성하고 수료증을 받으세요!
+                        </p>
+                    </div>
+                    <button onclick="speakText('4단계. 배움노트 작성하기. 자기존중이란 남과 조금 다른 내 모습도 있는 그대로 인정하고 사랑하는 마음입니다.')" class="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition" title="읽어주기">
+                        <i class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Self Respect Value Banner -->
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-3xl p-5 space-y-2">
+                    <div class="flex items-center gap-2 text-amber-800 font-black text-base">
+                        <span class="text-2xl">💡</span> 오늘의 중심 가치: [ 자기존중 ]
+                    </div>
+                    <p class="text-xs sm:text-sm text-amber-900 leading-relaxed">
+                        <b>자기존중이란?</b> 남과 조금 다른 내 모습이나 나의 단점도 숨기지 않고, <br class="hidden sm:inline">
+                        <span class="bg-amber-200/80 px-2 py-0.5 rounded font-bold">"괜찮아, 이것도 나야!"</span> 하고 나 자신을 인정하고 사랑하는 마음입니다.
+                    </p>
+                </div>
+
+                <!-- Interactive Card Builder -->
+                <div class="bg-emerald-50/50 border-2 border-emerald-200 rounded-3xl p-6 space-y-5">
+                    <h4 class="font-black text-emerald-900 text-base flex items-center gap-2">
+                        <span>📝</span> 나를 사랑하는 마음 카드 만들기
+                    </h4>
+
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 space-y-4 text-sm leading-relaxed text-slate-700">
+                        <p>
+                            📌 임금님은 당나귀 귀를 부끄러워했지만, 자신의 모습을 있는 그대로 받아들이고 <b>(자기존중)</b>했습니다.
+                        </p>
+                        <p class="font-bold text-emerald-800">
+                            🌱 나도 남들과 조금 달라도 괜찮습니다!
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-2 py-2">
+                            <span>나의</span>
+                            <input type="text" id="selfFeatureInput" placeholder="예: 수줍음이 많은 / 키가 작은" class="border-2 border-emerald-400 bg-emerald-50 rounded-xl px-3 py-2 font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-64">
+                            <span>모습도 소중하고 멋진 나의 한 부분입니다.</span>
+                        </div>
+
+                        <!-- Sample Chips for quick selection -->
+                        <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-400">💡 추천 선택 힌트:</span>
+                            <button onclick="setSelfChip('키가 작은')" class="text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition">키가 작은</button>
+                            <button onclick="setSelfChip('수줍음이 많은')" class="text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition">수줍음이 많은</button>
+                            <button onclick="setSelfChip('목소리가 작은')" class="text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition">목소리가 작은</button>
+                            <button onclick="setSelfChip('계산이 조금 더딘')" class="text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition">계산이 조금 더딘</button>
+                            <button onclick="setSelfChip('운동이 서툰')" class="text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg transition">운동이 서툰</button>
+                        </div>
+                    </div>
+
+                    <!-- Daily Resolution -->
+                    <div class="space-y-2">
+                        <label class="block font-extrabold text-xs text-emerald-900">✨ 오늘의 한 줄 다짐하기</label>
+                        <div class="bg-white rounded-2xl p-4 border border-emerald-200 flex flex-wrap items-center gap-2 text-sm font-bold">
+                            <span>"나는 나 자신을 있는 그대로</span>
+                            <select id="resolutionSelect" class="border-2 border-emerald-400 bg-emerald-50 rounded-xl px-3 py-1.5 font-extrabold text-emerald-800">
+                                <option value="사랑하고 존중">사랑하고 존중</option>
+                                <option value="소중히 아끼고">소중히 아끼고</option>
+                            </select>
+                            <span>하겠습니다!"</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <button onclick="checkStep4()" class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold shadow-lg shadow-emerald-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-trophy"></i> 4단계 완료 및 2026 디지털 책갈피 발급!
+                    </button>
+                </div>
+
+                <!-- 2026 Digital Bookmark Certificate Box (Shown when completed) -->
+                <div id="certificateBox" class="hidden mt-8 border-4 border-amber-300 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                    <div class="text-center space-y-4">
+                        <div class="inline-block bg-amber-400 text-amber-950 font-black px-4 py-1.5 rounded-full text-xs shadow-sm">
+                            🎉 2026 디지털 책갈피 수료증
+                        </div>
+                        <h2 class="text-2xl font-black text-amber-900">축하합니다! 문해력과 자존감이 성장했습니다</h2>
+
+                        <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-amber-200 text-left space-y-3 text-sm text-slate-800">
+                            <div class="flex justify-between items-center border-b border-amber-200 pb-2">
+                                <span class="font-bold text-slate-500">학습자 성명:</span>
+                                <span id="certName" class="font-black text-lg text-emerald-700">-</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-amber-200 pb-2">
+                                <span class="font-bold text-slate-500">수료 단원:</span>
+                                <span class="font-bold text-slate-800">[그림책 뿡뿡뿡] 임금님 귀는 당나귀 귀</span>
+                            </div>
+                            <div class="border-b border-amber-200 pb-2">
+                                <span class="font-bold text-slate-500 block mb-1">나의 나다움 다짐:</span>
+                                <p id="certSelfText" class="font-extrabold text-emerald-900 italic bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                                    "남들과 조금 달라도 괜찮아!"
+                                </p>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-500">획득 도장:</span>
+                                <span class="font-black text-amber-600 text-base">💮💮💮💮 (4개 완료)</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+                            <button onclick="window.print()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition shadow-md flex items-center gap-1.5">
+                                <i class="fa-solid fa-print"></i> 수료증 인쇄하기
+                            </button>
+                            <button onclick="copyCertificateText()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition shadow-md flex items-center gap-1.5">
+                                <i class="fa-solid fa-copy"></i> 배움 노트 텍스트 복사
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Student Info Modal -->
+    <div id="studentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-black text-lg text-slate-800">👤 참여 학생 정보 입력하기</h3>
+                <button onclick="closeStudentModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">학교명</label>
+                    <input type="text" id="inputSchoolName" placeholder="예: 미래중학교" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">학번</label>
+                    <input type="text" id="inputStudentId" placeholder="예: 1학년 2반 15번 (또는 10215)" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">이름</label>
+                    <input type="text" id="inputStudentName" placeholder="예: 홍길동" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2 text-sm font-semibold focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+
+            <button onclick="saveStudentInfo()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md transition">
+                저장하고 학습 시작하기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global App State
+        let currentTab = 1;
+        let fontSizeLevel = 0; // -1, 0, 1
+        let isHighContrast = false;
+        let ttsActive = true;
+
+        let studentInfo = {
+            name: "김배움",
+            schoolName: "행복중학교",
+            studentId: "1학년 3반 12번",
+            stamps: [false, false, false, false]
+        };
+
+        // Step 1 Data (Sequence - Expanded to 6 steps)
+        const initialSequence = [
+            { id: 1, correctOrder: 3, text: "비밀을 지키느라 답답했던 모자장이가 참다못해 깊은 산속 대나무 숲으로 달려갔습니다." },
+            { id: 2, correctOrder: 6, text: "정승의 따뜻한 조언을 들은 임금님은 귀를 당당하게 드러내고, 백성들의 말에 귀 기울이는 어진 임금이 되었습니다." },
+            { id: 3, correctOrder: 1, text: "어느 날 임금님의 귀가 당나귀 귀처럼 쑥쑥 길어져서 모자로 귀를 가리고 숨겼습니다." },
+            { id: 4, correctOrder: 4, text: "모자장이는 대나무 숲에서 \"임금님 귀는 당나귀 귀!\"라고 소리쳐 비밀을 시원하게 털어놓았습니다." },
+            { id: 5, correctOrder: 2, text: "새 모자를 만들던 모자장이는 임금님의 귀를 보았지만, 비밀을 꼭 지키겠다고 약속했습니다." },
+            { id: 6, correctOrder: 5, text: "바람이 불 때마다 대나무 숲에서 소리가 울려 퍼지며 온 나라에 소문이 퍼졌습니다." }
+        ];
+        let currentSequence = JSON.parse(JSON.stringify(initialSequence));
+
+        // Step 2 Data (Vocabulary Matching)
+        const vocabMatches = [
+            { id: 1, word: "신하", answer: "다", desc: "임금님을 돕는 사람" },
+            { id: 2, word: "소문", answer: "가", desc: "사람들의 입을 통해 퍼지는 이야기" },
+            { id: 3, word: "괴로워하다", answer: "나", desc: "마음이나 몸이 아프고 힘들다" },
+            { id: 4, word: "귀를 기울이다", answer: "라", desc: "남의 말을 주의 깊게 듣다" }
+        ];
+
+        // Step 3 Data (Quiz)
+        const quizData = [
+            {
+                id: 1,
+                type: "mcq",
+                question: "1. [3지선다] 임금님이 큰 모자를 써서 귀를 숨긴 이유는 무엇인가요?",
+                options: ["① 모자가 멋있어서 자랑하고 싶어서", "② 당나귀 귀처럼 길어진 귀가 부끄러워서", "③ 날씨가 너무 추워서"],
+                answer: 1,
+                hint: "귀가 길어진 모습을 남들에게 보여주기 창피해했어요."
+            },
+            {
+                id: 2,
+                type: "mcq",
+                question: "2. [3지선다] 답답한 마음을 참지 못한 모자장이가 찾아가 소리를 지른 곳은 어디인가요?",
+                options: ["① 깊은 산속 대나무 숲", "② 사람이 많은 시끌벅적한 시장", "③ 임금님이 계신 궁궐 마당"],
+                answer: 0,
+                hint: "바람이 불면 소리가 울리는 상쾌한 대나무 숲이었어요."
+            },
+            {
+                id: 3,
+                type: "mcq",
+                question: "3. [3지선다] 정승이 괴로워하는 임금님에게 해 준 따뜻한 말은 무엇인가요?",
+                options: [
+                    "① \"귀가 길어진 것은 창피하니 절대 밖으로 나오지 마십시오.\"",
+                    "② \"당장 모자장이를 궁궐 밖으로 쫓아내야 합니다.\"",
+                    "③ \"귀가 큰 것은 백성의 목소리를 잘 들을 수 있어 흉이 되지 않습니다.\""
+                ],
+                answer: 2,
+                hint: "귀가 큰 것이 큰 벼슬이자 훌륭한 장점이 될 수 있다고 조언했어요."
+            },
+            {
+                id: 4,
+                type: "ox",
+                question: "4. [OX퀴즈] 대나무를 모두 베어버리자 세상에서 소문이 완전히 사라졌습니다.",
+                options: ["O", "X"],
+                answer: 1, // X
+                hint: "산수유나무가 새로 자라면서 바람이 불자 다시 소리가 났어요!"
+            },
+            {
+                id: 5,
+                type: "ox",
+                question: "5. [OX퀴즈] 이야기 끝에서 임금님은 자신의 귀를 당당하게 드러내고 훌륭한 임금이 되었습니다.",
+                options: ["O", "X"],
+                answer: 0, // O
+                hint: "자신의 귀를 인정하고 백성의 목소리에 귀를 기울였습니다."
+            }
+        ];
+
+        window.onload = function() {
+            renderStudentInfo();
+            renderStep1();
+            renderStep2();
+            renderStep3();
+            updateStampBoard();
+        };
+
+        // Tab Switching
+        function switchTab(tabNum) {
+            currentTab = tabNum;
+            for (let i = 1; i <= 4; i++) {
+                const tabBtn = document.getElementById(`tabBtn${i}`);
+                const tabContent = document.getElementById(`tabContent${i}`);
+                if (i === tabNum) {
+                    tabBtn.classList.add('active-tab', 'bg-emerald-50', 'text-emerald-700');
+                    tabBtn.classList.remove('text-slate-500');
+                    tabContent.classList.remove('hidden');
+                } else {
+                    tabBtn.classList.remove('active-tab', 'bg-emerald-50', 'text-emerald-700');
+                    tabBtn.classList.add('text-slate-500');
+                    tabContent.classList.add('hidden');
+                }
+            }
+        }
+
+        function renderStudentInfo() {
+            document.getElementById('displayStudentName').innerText = studentInfo.name;
+            document.getElementById('displayStudentInfo').innerText = `${studentInfo.schoolName} / ${studentInfo.studentId}`;
+            document.getElementById('inputStudentName').value = studentInfo.name;
+            document.getElementById('inputSchoolName').value = studentInfo.schoolName;
+            document.getElementById('inputStudentId').value = studentInfo.studentId;
+        }
+
+        function openStudentModal() {
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('studentModal').classList.add('hidden');
+        }
+
+        function saveStudentInfo() {
+            const name = document.getElementById('inputStudentName').value.trim();
+            const school = document.getElementById('inputSchoolName').value.trim();
+            const studentId = document.getElementById('inputStudentId').value.trim();
+            if (name) studentInfo.name = name;
+            if (school) studentInfo.schoolName = school;
+            if (studentId) studentInfo.studentId = studentId;
+            renderStudentInfo();
+            closeStudentModal();
+        }
+
+        function renderStep1() {
+            const container = document.getElementById('sequenceList');
+            container.innerHTML = '';
+
+            currentSequence.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-emerald-300 transition";
+                card.innerHTML = `
+                    <div class="flex items-center gap-3 flex-grow">
+                        <select onchange="updateSequenceOrder(${index}, this.value)" class="border-2 border-emerald-400 bg-emerald-50 font-black text-emerald-900 rounded-xl px-3 py-2 text-sm focus:outline-none">
+                            <option value="1" ${item.selectedOrder === 1 ? 'selected' : ''}>1번</option>
+                            <option value="2" ${item.selectedOrder === 2 ? 'selected' : ''}>2번</option>
+                            <option value="3" ${item.selectedOrder === 3 ? 'selected' : ''}>3번</option>
+                            <option value="4" ${item.selectedOrder === 4 ? 'selected' : ''}>4번</option>
+                            <option value="5" ${item.selectedOrder === 5 ? 'selected' : ''}>5번</option>
+                            <option value="6" ${item.selectedOrder === 6 ? 'selected' : ''}>6번</option>
+                        </select>
+                        <p class="text-sm font-semibold text-slate-800 leading-relaxed">${item.text}</p>
+                    </div>
+                    <button onclick="speakText('${item.text.replace(/"/g, '')}')" class="p-2 text-emerald-600 hover:bg-emerald-100 rounded-xl" title="읽어주기">
+                        <i class="fa-solid fa-volume-high text-sm"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateSequenceOrder(index, val) {
+            currentSequence[index].selectedOrder = parseInt(val);
+        }
+
+        function resetStep1() {
+            currentSequence = JSON.parse(JSON.stringify(initialSequence));
+            renderStep1();
+            const fb = document.getElementById('step1Feedback');
+            fb.classList.add('hidden');
+        }
+
+        function checkStep1() {
+            let isCorrect = true;
+            currentSequence.forEach(item => {
+                if (item.selectedOrder !== item.correctOrder) {
+                    isCorrect = false;
+                }
+            });
+
+            const fb = document.getElementById('step1Feedback');
+            fb.classList.remove('hidden');
+
+            if (isCorrect) {
+                fb.className = "p-4 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-900 font-extrabold text-center text-sm";
+                fb.innerHTML = "🎉 완벽합니다! 6개 장면을 이야기 순서대로 바르게 맞추셨습니다!";
+                awardStamp(0);
+                triggerConfetti();
+                speakText("완벽합니다! 이야기 장면을 순서대로 바르게 맞추셨습니다!");
+            } else {
+                fb.className = "p-4 rounded-2xl bg-rose-100 border border-rose-300 text-rose-900 font-extrabold text-center text-sm";
+                fb.innerHTML = "💡 아직 순서가 맞지 않는 부분이 있어요. 이야기를 다시 차근차근 읽어보고 1~6번을 지정해 보세요!";
+                speakText("아직 순서가 맞지 않는 부분이 있어요. 다시 시도해 보세요!");
+            }
+        }
+
+        function renderStep2() {
+            const container = document.getElementById('vocabMatchingContainer');
+            container.innerHTML = '';
+
+            vocabMatches.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = "bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-sm";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-emerald-800 bg-white border border-emerald-200 px-3 py-1 rounded-xl shadow-sm">
+                            ${index + 1}. ${item.word}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500 font-bold">의미 연결:</span>
+                        <select id="vocabSelect_${index}" class="border-2 border-emerald-400 bg-white font-bold text-slate-800 rounded-xl px-3 py-1.5 text-xs focus:outline-none">
+                            <option value="">-- 알맞은 뜻 선택 --</option>
+                            <option value="가">가) 사람들의 입을 통해 퍼지는 이야기</option>
+                            <option value="나">나) 마음이나 몸이 아프고 힘들다</option>
+                            <option value="다">다) 임금님을 돕는 사람</option>
+                            <option value="라">라) 남의 말을 주의 깊게 듣다</option>
+                        </select>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function checkStep2() {
+            let correctCount = 0;
+
+            // Check part 1
+            vocabMatches.forEach((item, index) => {
+                const val = document.getElementById(`vocabSelect_${index}`).value;
+                if (val === item.answer) correctCount++;
+            });
+
+            // Check part 2
+            const b1 = document.getElementById('fillBlank1').value;
+            const b2 = document.getElementById('fillBlank2').value;
+            const b3 = document.getElementById('fillBlank3').value;
+
+            if (b1 === "괴로워하다") correctCount++;
+            if (b2 === "소문") correctCount++;
+            if (b3 === "귀를 기울이다") correctCount++;
+
+            const fb = document.getElementById('step2Feedback');
+            fb.classList.remove('hidden');
+
+            if (correctCount === 7) {
+                fb.className = "p-4 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-900 font-extrabold text-center text-sm";
+                fb.innerHTML = "🎉 대단해요! 모든 어휘 연결과 문장 완성을 정답으로 맞추셨습니다!";
+                awardStamp(1);
+                triggerConfetti();
+                speakText("대단해요! 모든 어휘와 문장을 완벽하게 맞추셨습니다!");
+            } else {
+                fb.className = "p-4 rounded-2xl bg-amber-100 border border-amber-300 text-amber-900 font-extrabold text-center text-sm";
+                fb.innerHTML = `💡 총 7문항 중 ${correctCount}개 맞추셨습니다. 다시 한번 어휘의 뜻을 확인하고 선택해 보세요!`;
+            }
+        }
+
+        function renderStep3() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+
+            quizData.forEach((q, idx) => {
+                const qBox = document.createElement('div');
+                qBox.className = "bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3";
+
+                let optionsHTML = '';
+                if (q.type === 'mcq') {
+                    q.options.forEach((opt, optIdx) => {
+                        optionsHTML += `
+                            <label class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-400 cursor-pointer transition">
+                                <input type="radio" name="quiz_${q.id}" value="${optIdx}" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                                <span class="text-sm font-semibold text-slate-800">${opt}</span>
+                            </label>
+                        `;
+                    });
+                } else {
+                    optionsHTML = `<div class="flex gap-4">`;
+                    q.options.forEach((opt, optIdx) => {
+                        optionsHTML += `
+                            <label class="flex-1 flex items-center justify-center gap-2 bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-400 cursor-pointer font-black text-lg transition text-slate-800">
+                                <input type="radio" name="quiz_${q.id}" value="${optIdx}" class="w-4 h-4 text-emerald-600">
+                                <span>[ ${opt} ]</span>
+                            </label>
+                        `;
+                    });
+                    optionsHTML += `</div>`;
+                }
+
+                qBox.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-extrabold text-slate-800 text-sm leading-relaxed">${q.question}</h4>
+                        <button onclick="speakText('${q.question.replace(/"/g, '')}')" class="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg" title="읽어주기">
+                            <i class="fa-solid fa-volume-high text-sm"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        ${optionsHTML}
+                    </div>
+                `;
+                container.appendChild(qBox);
+            });
+        }
+
+        function checkStep3() {
+            let correct = 0;
+            quizData.forEach(q => {
+                const selected = document.querySelector(`input[name="quiz_${q.id}"]:checked`);
+                if (selected && parseInt(selected.value) === q.answer) {
+                    correct++;
+                }
+            });
+
+            const fb = document.getElementById('step3Feedback');
+            fb.classList.remove('hidden');
+
+            if (correct === 5) {
+                fb.className = "p-4 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-900 font-extrabold text-center text-sm";
+                fb.innerHTML = "🎉 퀴즈 만점! 이야기를 아주 깊이 이해하고 파악하셨네요!";
+                awardStamp(2);
+                triggerConfetti();
+                speakText("퀴즈 만점! 이야기 내용을 아주 잘 파악하셨습니다!");
+            } else {
+                fb.className = "p-4 rounded-2xl bg-amber-100 border border-amber-300 text-amber-900 font-extrabold text-center text-sm";
+                fb.innerHTML = `💡 5문제 중 ${correct}문제를 맞추셨습니다. 정답이 아닌 문제는 힌트를 생각하며 다스 풀어보세요!`;
+            }
+        }
+
+        function setSelfChip(text) {
+            document.getElementById('selfFeatureInput').value = text;
+        }
+
+        function checkStep4() {
+            const selfFeature = document.getElementById('selfFeatureInput').value.trim();
+            if (!selfFeature) {
+                alert("나의 특징이나 남들과 다른 점을 하나 이상 채워주세요! (예: 수줍음이 많은)");
+                return;
+            }
+
+            awardStamp(3);
+            triggerConfetti();
+
+            // Render Certificate
+            document.getElementById('certName').innerText = `${studentInfo.schoolName} ${studentInfo.studentId} ${studentInfo.name}`;
+            document.getElementById('certSelfText').innerText = `"나의 [ ${selfFeature} ] 모습도 소중한 나의 한 부분입니다!"`;
+            document.getElementById('certificateBox').classList.remove('hidden');
+
+            speakText("축하합니다! 2026 디지털 책갈피 수료 과정과 배움 노트를 성공적으로 완수하셨습니다.");
+        }
+
+        function copyCertificateText() {
+            const text = `🔖 [2026 디지털 책갈피 수료증]\n학교명: ${studentInfo.schoolName}\n학번: ${studentInfo.studentId}\n이름: ${studentInfo.name}\n오늘의 다짐: 나의 [ ${document.getElementById('selfFeatureInput').value} ] 모습도 소중하고 멋진 나의 부분입니다!\n상태: 4단계 과정 완전 수료 완료!`;
+            
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            alert("수료 및 배움노트 내용이 클립보드에 복사되었습니다!");
+        }
+
+        function awardStamp(stepIdx) {
+            studentInfo.stamps[stepIdx] = true;
+            updateStampBoard();
+        }
+
+        function updateStampBoard() {
+            let count = 0;
+            for (let i = 0; i < 4; i++) {
+                const area = document.getElementById(`stampArea${i + 1}`);
+                const box = document.getElementById(`stampBox${i + 1}`);
+
+                if (studentInfo.stamps[i]) {
+                    count++;
+                    area.innerHTML = `
+                        <div class="stamp-animate inline-flex items-center justify-center bg-rose-500 text-white font-black text-xs px-2.5 py-1.5 rounded-full shadow-md border-2 border-white">
+                            💮 참잘했어요!
+                        </div>
+                    `;
+                    box.classList.add('bg-emerald-50', 'border-emerald-400');
+                    box.classList.remove('bg-slate-50', 'border-slate-300');
+                }
+            }
+            document.getElementById('stampProgressText').innerText = count;
+        }
+
+        function toggleTTSMode() {
+            ttsActive = !ttsActive;
+            const btn = document.getElementById('ttsBtn');
+            if (ttsActive) {
+                btn.classList.add('bg-emerald-50', 'text-emerald-700');
+                speakText("음성 읽기 기능이 활성화되었습니다.");
+            } else {
+                btn.classList.remove('bg-emerald-50', 'text-emerald-700');
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function speakText(text) {
+            if (!ttsActive) return;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ko-KR';
+                utterance.rate = 0.9; // Slight slow for slow learners
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function changeFontSize(delta) {
+            fontSizeLevel = Math.max(-1, Math.min(1, fontSizeLevel + delta));
+            const root = document.documentElement;
+            if (fontSizeLevel === 1) root.style.fontSize = '18px';
+            else if (fontSizeLevel === -1) root.style.fontSize = '14px';
+            else root.style.fontSize = '16px';
+        }
+
+        function toggleHighContrast() {
+            isHighContrast = !isHighContrast;
+            document.body.classList.toggle('high-contrast', isHighContrast);
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
