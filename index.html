@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>생각 쑥쑥 시민 학교 (Picture Book & Citizen)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel CDN for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <!-- Google Fonts: Jua & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <!-- Referrer Policy -->
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #F7FAFC;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    /* Touch friendly custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F1F5F9;
+    }
+    .bounce-gentle {
+      animation: bounceGentle 2s infinite;
+    }
+    @keyframes bounceGentle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased bg-amber-50/40 min-h-screen selection:bg-amber-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- Speech Synthesis (TTS) Helper with Natural Voice Selection ---
+    const speakText = (text, onStart, onEnd) => {
+      if (!('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel(); // Stop active speech
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 0.88; // Gentle, clear pacing for better comprehension
+      utterance.pitch = 1.05; // Warm, friendly tone
+
+      // Select natural Korean voice if available in user's OS/browser
+      const voices = window.speechSynthesis.getVoices();
+      const koVoices = voices.filter(v => v.lang.includes('ko') || v.lang.includes('KO'));
+      const preferredVoice = koVoices.find(v => 
+        v.name.includes('Google') || 
+        v.name.includes('Natural') || 
+        v.name.includes('Heami') || 
+        v.name.includes('Yuna') || 
+        v.name.includes('SunHi') ||
+        v.name.includes('Korean')
+      ) || koVoices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onstart = () => { if (onStart) onStart(); };
+      utterance.onend = () => { if (onEnd) onEnd(); };
+      utterance.onerror = () => { if (onEnd) onEnd(); };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    const stopSpeaking = () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
+    const playSound = (type) => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        
+        if (type === 'success') {
+          const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.3);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + i * 0.1);
+            osc.stop(ctx.currentTime + i * 0.1 + 0.3);
+          });
+        } else if (type === 'retry') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.25);
+        } else if (type === 'badge') {
+          if (window.confetti) {
+            window.confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+          }
+          const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + i * 0.12);
+            osc.stop(ctx.currentTime + i * 0.12 + 0.4);
+          });
+        } else if (type === 'click') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.setValueAtTime(400, ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.05);
+        }
+      } catch (e) {
+        console.log('Audio feedback unavailable', e);
+      }
+    };
+
+    const speak = (text) => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    const BOOKS_DATA = [
+      {
+        id: 'cow',
+        title: '소가 된 게으름뱅이',
+        subtitle: '성실, 책임, 노동의 가치',
+        icon: '🐮',
+        bgColor: 'bg-amber-100',
+        borderColor: 'border-amber-400',
+        badgeName: '성실한 시민 배지',
+        badgeIcon: '⭐',
+        youtubeId: '8w4SDVp0dhg',
+        slides: [
+          { image: '🏡', text: '옛날 옛적에 일하기는 싫어하고 하루 종일 방 안에서 빈둥거리기만 하는 게으름뱅이가 살고 있었어요.' },
+          { image: '😤', text: '부모님이 일하라고 야단을 치자, 게으름뱅이는 불만을 품고 집을 떠나 마을 밖으로 나갔어요.' },
+          { image: '🎭', text: '길을 가다 신기한 탈을 만드는 노인의 집에 도착하여 소 탈을 쓰게 되었답니다.' },
+          { image: '🐂', text: '소 탈을 쓰자마자 진짜 소로 변해버렸고, 농부에게 팔려가 쉼 없이 힘든 밭갈이를 해야 했어요.' },
+          { image: '🌾', text: '땀 흘려 일하며 자신이 그동안 얼마나 게을렀는지 눈물을 흘리며 깊이 반성했어요.' },
+          { image: '🍎', text: '겨우 사람이 된 게으름뱅이는 집으로 돌아가 부모님을 도우며 성실하고 책임감 있는 사람이 되었답니다.' }
+        ],
+        matchPairs: [
+          { id: 'm1', left: '게으름뱅이', right: '일하기 싫어 누워서 빈둥거렸다' },
+          { id: 'm2', left: '탈 만드는 노인', right: '게으름뱅이에게 소 탈을 씌워주었다' },
+          { id: 'm3', left: '소로 변한 사람', right: '힘들게 밭을 갈며 일의 소중함을 깨달았다' }
+        ],
+        characterQuiz: {
+          question: '소 탈을 쓰고 매일매일 밭을 갈게 된 게으름뱅이의 첫 행동은 어떤 가치관이 부족했을까요?',
+          options: [
+            { text: '책임감이 없고 게을러서 공동체에 부담을 주었다', isCorrect: true, rationale: '자신이 해야 할 일을 하지 않고 미루면 나와 주변 이웃에게 어려움을 주게 됩니다.' },
+            { text: '언제나 이웃에게 봉사하고 약속을 잘 지켰다', isCorrect: false, rationale: '게으름뱅이는 처음에는 전혀 일하지 않고 놀기만 했습니다.' },
+            { text: '음식을 만들어서 남들에게 나누어 주었다', isCorrect: false, rationale: '게으름뱅이는 누워서 쉬는 것만 좋아했습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'소가 된 게으름뱅이' 이야기가 우리에게 전해주는 가장 중요한 민주시민 가치는 무엇일까요?",
+          options: [
+            { text: '성실함과 책임감', isCorrect: true, rationale: '공동체의 일원으로서 자신의 역할을 책임감 있게 성실히 다하는 것이 중요합니다.' },
+            { text: "욕심과 재산 모으기", isCorrect: false, rationale: '이야기는 돈을 버는 것보다 맡은 일에 최선을 다하는 성실함의 가치를 말해줍니다.' },
+            { text: '남을 속이는 지혜', isCorrect: false, rationale: '남을 속이는 것은 올바른 시민의 행동이 아닙니다.' }
+          ]
+        }
+      },
+      {
+        id: 'fan',
+        title: '빨간 부채 파란 부채',
+        subtitle: '공공의 이익, 탐욕 경계, 배려',
+        icon: '🪭',
+        bgColor: 'bg-rose-100',
+        borderColor: 'border-rose-400',
+        badgeName: '배려하는 시민 배지',
+        badgeIcon: '❤️',
+        youtubeId: 'rrQXWSiuPTY',
+        slides: [
+          { image: '✨', text: '마음씨 착한 할아버지가 산길에서 코가 길어지는 빨간 부채와 줄어드는 파란 부채를 주웠어요.' },
+          { image: '🎁', text: '착한 할아버지는 신기한 부채를 이웃 사람들과 나누며 즐거운 시간을 보내고 있었어요.' },
+          { image: '💰', text: '이 소문을 들은 욕심 많은 부자 할아버지가 부채를 몰래 빼앗아 가버렸답니다.' },
+          { image: '👺', text: '부자 할아버지는 이웃 부자의 코를 길게 만들어 돈을 벌려는 나쁜 계획을 세웠어요.' },
+          { image: '☁️', text: '탐욕에 눈이 멀어 부채를 계속 부치다 코가 하늘 끝 옥황상제 궁궐 바닥까지 뚫고 들어갔어요.' },
+          { image: '⚡', text: '옥황상제가 코를 기둥에 묶어버리는 바람에 부자 할아버지는 하늘 높이 끌려 올라가 큰 벌을 받았답니다.' }
+        ],
+        matchPairs: [
+          { id: 'f1', left: '착한 할아버지', right: '신비한 부채를 찾아 이웃과 나누었다' },
+          { id: 'f2', left: '욕심 많은 부자', right: '탐욕을 부리다 하늘까지 코가 늘어났다' },
+          { id: 'f3', left: '빨간 부채', right: '부치면 코가 쑥쑥 길어지는 부채' }
+        ],
+        characterQuiz: {
+          question: '부채를 빼앗아 남의 코를 길게 만들어 돈을 벌려 한 부자 할아버지의 가치관은 어떠한가요?',
+          options: [
+            { text: '지나친 욕심으로 이웃에게 피해를 준다', isCorrect: true, rationale: '자신의 욕심만 차리려고 남에게 피해를 주는 행동은 공공의 이익에 위배됩니다.' },
+            { text: '마을 사람들을 위해 열심히 봉사한다', isCorrect: false, rationale: '부자 할아버지는 오직 자신의 돈벌이만 생각했습니다.' },
+            { text: '남의 어려운 사정을 따뜻하게 도와준다', isCorrect: false, rationale: '부자 할아버지는 이웃을 아프게 해서 돈을 벌려고 했습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'빨간 부채 파란 부채' 이야기가 알려주는 민주시민의 교훈은 무엇일까요?",
+          options: [
+            { text: '탐욕을 경계하고 이웃과 공공의 이익을 생각해야 한다', isCorrect: true, rationale: '나의 행동이 이웃과 사회 전체에 미치는 영향을 생각하며 배려하는 태도가 필요합니다.' },
+            { text: '희귀한 물건을 보면 무조건 가지는 것이 좋다', isCorrect: false, rationale: '남의 것을 탐내는 탐욕은 큰 불행을 불러옵니다.' },
+            { text: '코가 길어지는 방법을 알아내는 것이 중요하다', isCorrect: false, rationale: '이 이야기는 마술이 아니라 사람의 지나친 욕심을 경계하는 교훈입니다.' }
+          ]
+        }
+      },
+      {
+        id: 'fart',
+        title: '방귀 며느리',
+        subtitle: '다양성 존중, 개인 특성 인정, 포용',
+        icon: '💨',
+        bgColor: 'bg-emerald-100',
+        borderColor: 'border-emerald-400',
+        badgeName: '포용하는 시민 배지',
+        badgeIcon: '🤝',
+        youtubeId: 'Xk2NUDlgQj4',
+        slides: [
+          { image: '👰', text: '어느 마을에 마음씨 고운 며느리가 시집을 왔지만, 남다른 엄청난 방귀 힘을 가지고 있었어요.' },
+          { image: '💨', text: '참다못한 며느리가 시원하게 방귀를 뀌자, 집안의 기와와 솥이 사방으로 날아가 버렸어요.' },
+          { image: '🌪️', text: '깜짝 놀란 시부모님은 어쩔 수 없이 며느리를 친정으로 돌려보내기로 했답니다.' },
+          { image: '🌳', text: '친정으로 가던 길에, 높은 배나무 아래에서 배를 따지 못해 동동 구르는 비단 상인들을 만났어요.' },
+          { image: '🍐', text: '며느리가 강력한 방귀를 뀌어 높은 나무의 배를 우르르 떨어뜨려 상인들을 기쁘게 도와주었어요.' },
+          { image: '🤝', text: '며느리의 특별한 능력과 따뜻한 마음을 알게 된 시부모님은 며느리를 다시 맞이하여 행복하게 살았답니다.' }
+        ],
+        matchPairs: [
+          { id: 'p1', left: '방귀 며느리', right: '남들과 다른 특별한 방귀 능력을 가졌다' },
+          { id: 'p2', left: '시부모님', right: '며느리의 특별한 장점을 깨닫고 포용했다' },
+          { id: 'p3', left: '비단 상인들', right: '며느리의 방귀 덕분에 과일을 얻고 감사했다' }
+        ],
+        characterQuiz: {
+          question: '자신의 방귀 힘으로 과일을 떨어뜨려 상인을 도운 며느리의 모습에서 배울 점은 무엇일까요?',
+          options: [
+            { text: '남과 다른 나만의 특성도 긍정적인 힘이 될 수 있다', isCorrect: true, rationale: '단점처럼 보이는 다름도 상황에 따라 이웃을 돕는 멋진 재능이 됩니다.' },
+            { text: '남들과 다른 모습을 숨기고 절대 말하면 안 된다', isCorrect: false, rationale: '나의 특성을 긍정적으로 사용하면 사회에 도움을 줄 수 있습니다.' },
+            { text: '혼자서만 맛있는 과일을 다 먹는 것이 좋다', isCorrect: false, rationale: '며느리는 남을 돕는 데 자신의 능력을 사용했습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'방귀 며느리' 이야기가 우리 사회의 민주시민에게 전하는 가장 큰 가치는 무엇일까요?",
+          options: [
+            { text: '다양성 존중과 서로에 대한 포용', isCorrect: true, rationale: '서로 다른 개성과 차이를 차별하지 않고 인정할 때 더욱 행복한 공동체가 됩니다.' },
+            { text: '모든 사람이 다 똑같이 행동해야 함', isCorrect: false, rationale: '민주사회는 다양성과 각자의 독특한 특성을 소중히 여깁니다.' },
+            { text: '남의 의견을 듣지 않고 내 고집만 피우기', isCorrect: false, rationale: '타인을 포용하고 존중하는 마음이 민주시민의 기본입니다.' }
+          ]
+        }
+      },
+      {
+        id: 'sunmoon',
+        title: '해님 달님',
+        subtitle: '지혜, 신뢰, 위기 극복과 연대',
+        icon: '☀️',
+        bgColor: 'bg-sky-100',
+        borderColor: 'border-sky-400',
+        badgeName: '지혜로운 시민 배지',
+        badgeIcon: '🌟',
+        youtubeId: 'cFnUQZpriwU',
+        slides: [
+          { image: '👵', text: '어머니가 이웃 마을에서 떡을 얻어 두 남매가 기다리는 집으로 돌아가고 있었어요.' },
+          { image: '🐯', text: '길에서 무서운 호랑이를 만나 떡을 다 빼앗기고 어머니마저 위험에 처했어요.' },
+          { image: '🏡', text: '호랑이는 어머니 옷을 입고 남매의 집으로 찾아가 문을 열어달라고 꾀었어요.' },
+          { image: '👧', text: '남매는 목소리와 손길을 이상하게 여겨 지혜롭게 호랑이의 거짓말을 알아챘어요.' },
+          { image: '🌳', text: '위험을 피해 나무 위로 올라간 남매는 하늘에 간절히 도움을 요청했어요.' },
+          { image: '☀️', text: '하늘에서 내려온 밧줄을 타고 올라간 오누이는 빛나는 해님과 달님이 되었답니다.' }
+        ],
+        matchPairs: [
+          { id: 'sm1', left: '지혜로운 오누이', right: '호랑이의 거짓말을 알아채고 서로를 보호했다' },
+          { id: 'sm2', left: '욕심 많은 호랑이', right: '거짓말로 남매를 속여 해치려고 했다' },
+          { id: 'sm3', left: '하늘의 밧줄', right: '위기에 처한 착한 남매를 도와준 구원의 길' }
+        ],
+        characterQuiz: {
+          question: '호랑이가 엄마인 척 거짓말을 했을 때, 오누이가 보여준 올바른 판단력은 무엇일까요?',
+          options: [
+            { text: '상대방의 말이 맞는지 침착하고 지혜롭게 확인했다', isCorrect: true, rationale: '위기 상황에서도 당황하지 않고 지혜롭게 판단하는 태도가 중요합니다.' },
+            { text: '무조건 호랑이의 말을 믿고 바로 문을 열어주었다', isCorrect: false, rationale: '의심스러운 상황에서는 사실을 먼저 확인해야 안전합니다.' },
+            { text: '서로 탓하며 싸우기만 하고 아무 행동도 하지 않았다', isCorrect: false, rationale: '남매는 힘을 합쳐 위기를 극복하려 노력했습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'해님 달님' 이야기가 우리에게 알려주는 민주시민의 중요한 가치는 무엇일까요?",
+          options: [
+            { text: '위기 상황에서도 지혜를 모으고 서로를 보호하는 연대', isCorrect: true, rationale: '위급할 때 지혜롭고 서로 연대하여 지키는 자세가 필요한 시민의 덕목입니다.' },
+            { text: '남을 속여서 나의 이익을 챙기는 지혜', isCorrect: false, rationale: '거짓말과 속임수는 올바른 시민의 모습이 아닙니다.' },
+            { text: '무서운 존재를 보면 무조건 혼자만 달아나는 행동', isCorrect: false, rationale: '이웃과 가족이 함께 서로를 돌보는 연대의식이 중요합니다.' }
+          ]
+        }
+      },
+      {
+        id: 'patjuk',
+        title: '팥죽 할멈과 호랑이',
+        subtitle: '약자 보호, 협동과 연대, 정의로운 사회',
+        icon: '🥣',
+        bgColor: 'bg-orange-100',
+        borderColor: 'border-orange-400',
+        badgeName: '협동하는 시민 배지',
+        badgeIcon: '🛡️',
+        youtubeId: 'OW3SeeEjoiA',
+        slides: [
+          { image: '👵', text: '깊은 산속에서 혼자 사는 할머니에게 무서운 호랑이가 나타나 잡아먹겠다고 위협했어요.' },
+          { image: '🥣', text: '할머니는 동짓날 맛있는 팥죽이라도 실컷 쑤어 먹고 죽게 해달라고 부탁했어요.' },
+          { image: '🥚', text: '할머니가 슬프게 팥죽을 쑬 때 알밤, 송곳, 멍석, 맷돌, 지게 등이 차례로 찾아왔어요.' },
+          { image: '🥣', text: '작은 물건들은 맛있는 팥죽 한 그릇을 얻어먹고 할머니를 돕기로 힘을 모았어요.' },
+          { image: '⚡', text: '밤이 되어 찾아온 호랑이를 각자의 위치에서 힘을 합쳐 하나씩 공격해 물리쳤어요.' },
+          { image: '🎉', text: '약하고 작은 존재들이 힘을 모아 무서운 호랑이를 몰아내고 할머니를 지켜냈답니다.' }
+        ],
+        matchPairs: [
+          { id: 'pj1', left: '팥죽 할머니', right: '약하고 힘이 없지만 이웃 물건들에게 팥죽을 대접했다' },
+          { id: 'pj2', left: '작은 물건 친구들', right: '힘을 합쳐 약한 할머니를 호랑이로부터 구했다' },
+          { id: 'pj3', left: '횡포를 부린 호랑이', right: '자신의 힘만 믿고 힘없는 할머니를 괴롭혔다' }
+        ],
+        characterQuiz: {
+          question: '작고 보잘것없는 물건들이 힘을 합쳐 할머니를 도와준 모습은 어떤 시민의 가치일까요?',
+          options: [
+            { text: '어려움에 처한 약자를 외면하지 않고 연대하여 협동함', isCorrect: true, rationale: '혼자서는 작지만 여럿이 힘을 합치면 커다란 부당함도 이겨낼 수 있습니다.' },
+            { text: '나보다 강한 존재에게 무조건 복종하고 힘을 보탬', isCorrect: false, rationale: '약자를 괴롭히는 강자에게 복종하는 것은 협동이 아닙니다.' },
+            { text: '나에게 이익이 없으면 남의 어려움을 모른 척함', isCorrect: false, rationale: '민주시민은 이웃의 어려운 사정에 관심을 가지고 돕습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'팥죽 할멈과 호랑이' 이야기가 우리 민주시민 사회에 주는 교훈은 무엇일까요?",
+          options: [
+            { text: '사회적 약자를 보호하고 다 함께 협력하는 정의로운 공동체', isCorrect: true, rationale: '모두가 연대할 때 더 안전하고 정의로운 민주 사회를 만들 수 있습니다.' },
+            { text: '힘이 센 사람이 항상 법이고 마음대로 해야 함', isCorrect: false, rationale: '힘으로 남을 누르는 사회는 민주주의가 아닙니다.' },
+            { text: '맛있는 음식이 있으면 혼자서만 다 먹어야 함', isCorrect: false, rationale: '나눔과 연대가 함께할 때 큰 힘이 됩니다.' }
+          ]
+        }
+      },
+      {
+        id: 'jeonwoochi',
+        title: '전우치전',
+        subtitle: '사회 정의, 부조리 비판, 재능의 바른 쓰임',
+        icon: '📜',
+        bgColor: 'bg-purple-100',
+        borderColor: 'border-purple-400',
+        badgeName: '정의로운 시민 배지',
+        badgeIcon: '⚖️',
+        youtubeId: 'um1-DV0oT78',
+        slides: [
+          { image: '🧙‍♂️', text: '신통한 도술을 배운 전우치는 백성들이 탐관오리 때문에 고통받는 모습을 보았어요.' },
+          { image: '👑', text: '전우치는 도술로 옥황상제의 신선으로 변신하여 임금과 벼슬아치들 앞에 나타났어요.' },
+          { image: '🍑', text: '옥황상제의 명령이라며 벼슬아치들에게 놋쇠 족자를 만들어 가난한 백성을 돕게 했어요.' },
+          { image: '🌾', text: '벼슬아치들에게서 거둔 쌀과 곡식을 굶주리는 백성들에게 널리 나누어 주었어요.' },
+          { image: '🏛️', text: '벼슬아치들이 전우치를 잡으려 했으나, 그림 속으로 들어가거나 도술로 당당히 맞섰어요.' },
+          { image: '⚖️', text: '전우치는 뛰어난 재능을 개인의 욕심이 아닌 사회 정의와 백성을 위해 사용했답니다.' }
+        ],
+        matchPairs: [
+          { id: 'jw1', left: '도사 전우치', right: '뛰어난 도술을 사용하여 굶주린 백성들을 구했다' },
+          { id: 'jw2', left: '탐욕스러운 벼슬아치', right: '백성의 재산을 빼앗고 괴롭히며 사회를 어지럽혔다' },
+          { id: 'jw3', left: '가난한 백성들', right: '전우치의 도움으로 굶주림을 이겨내고 희망을 얻었다' }
+        ],
+        characterQuiz: {
+          question: '전우치가 자신의 특별한 도술 능력을 가난한 백성을 돕는 데 사용한 이유는 무엇일까요?',
+          options: [
+            { text: '자신의 능력과 힘을 사회의 공정함과 정의를 위해 썼다', isCorrect: true, rationale: '내가 가진 재능이나 힘을 공동체의 이익과 사회 정의를 위해 사용하는 것은 멋진 시민의 자세입니다.' },
+            { text: '혼자서만 유명해지고 부자가 되기 위해 도술을 썼다', isCorrect: false, rationale: '전우치는 개인의 욕심을 채우려 하지 않았습니다.' },
+            { text: '사람들을 놀리고 괴롭히는 것이 즐거워서 도술을 썼다', isCorrect: false, rationale: '장난이 아닌 부조리한 사회를 바로잡기 위해 일어섰습니다.' }
+          ]
+        },
+        themeQuiz: {
+          question: "'전우치전'을 통해 우리가 배워야 할 민주시민의 덕목은 무엇일까요?",
+          options: [
+            { text: '사회적 부조리에 맞서 공정함과 정의를 실천하는 자세', isCorrect: true, rationale: '불평등하고 부조리한 문제를 바로잡고 정의로운 사회를 만들어야 합니다.' },
+            { text: '높은 벼슬에 올라 사람들을 마음대로 조정하기', isCorrect: false, rationale: '권력을 가졌다고 남을 압제하는 것은 잘못된 행동입니다.' },
+            { text: '힘있는 사람 편에 서서 가난한 이웃을 나몰라라 하기', isCorrect: false, rationale: '약자와 공공의 정의를 위해 일어서는 자세가 필요합니다.' }
+          ]
+        }
+      }
+    ];
+
+    const INTEGRATED_QUIZZES = [
+      {
+        question: "다음 중 '공동체에서 내가 맡은 일을 성실히 해야 한다'는 교훈을 알려준 인물은 누구일까요?",
+        options: [
+          { text: "소가 된 게으름뱅이", isCorrect: true, rationale: "게으름뱅이는 소 탈을 쓰고 일의 소중함과 성실의 가치를 배웠습니다." },
+          { text: "코가 길어진 부자 할아버지", isCorrect: false, rationale: "부자 할아버지는 탐욕을 부리다가 벌을 받았습니다." },
+          { text: "방귀 힘이 센 며느리", isCorrect: false, rationale: "며느리는 다양성 존중과 장점 발휘의 가치를 보여주었습니다." }
+        ]
+      },
+      {
+        question: "약하고 작은 존재들이(알밤, 맷돌 등) 힘을 모아 무서운 호랑이를 물리친 이야기는 무엇인가요?",
+        options: [
+          { text: "팥죽 할멈과 호랑이", isCorrect: true, rationale: "혼자서는 약하지만 연대하고 협동하여 약자를 보호하는 아름다운 이야기입니다." },
+          { text: "방귀 며느리", isCorrect: false, rationale: "남과 다른 개성을 존중하는 이야기입니다." },
+          { text: "전우치전", isCorrect: false, rationale: "도술로 사회 정의를 실천하는 이야기입니다." }
+        ]
+      },
+      {
+        question: "전우치가 도술을 사용하여 탐관오리를 혼내고 백성을 도운 행동이 담고 있는 가치는 무엇일까요?",
+        options: [
+          { text: "사회 정의와 공정함 실천", isCorrect: true, rationale: "자신의 능력을 개인의 부귀영화가 아니라 공동체와 정의를 위해 사용했습니다." },
+          { text: "혼자서만 부자 되기", isCorrect: false, rationale: "전우치는 가난한 백성을 돕는 데 집중했습니다." },
+          { text: "일하기 싫어 누워있기", isCorrect: false, rationale: "성실하지 않은 태도입니다." }
+        ]
+      },
+      {
+        question: "호랑이의 거짓말 속임수에도 당황하지 않고 지혜롭게 서로를 보호한 남매의 가치는 무엇일까요?",
+        options: [
+          { text: "위기 극복을 위한 지혜와 연대", isCorrect: true, rationale: "어려운 위기에서도 지혜롭게 서로를 지키는 자세가 중요합니다." },
+          { text: "무조건 남을 의심만 하고 싸우기", isCorrect: false, rationale: "슬기로운 판단과 연대가 핵심입니다." },
+          { text: "남의 물건을 몰래 빼앗기", isCorrect: false, rationale: "올바른 시민의 행동이 아닙니다." }
+        ]
+      },
+      {
+        question: "다음 중 '남과 다른 특별한 점을 차별하지 않고 서로 도와야 한다'는 다양성의 가치를 담은 책은 무엇일까요?",
+        options: [
+          { text: "방귀 며느리", isCorrect: true, rationale: "남들과 다른 방귀 힘을 긍정적으로 살려 이웃을 돕고 포용받았습니다." },
+          { text: "소가 된 게으름뱅이", isCorrect: false, rationale: "성실함과 노동의 책임을 다루는 이야기입니다." },
+          { text: "빨간 부채 파란 부채", isCorrect: false, rationale: "지나친 탐욕을 경계하고 공공의 이익을 다루는 이야기입니다." }
+        ]
+      }
+    ];
+
+    const WORD_BANK = {
+      person: ["게으름뱅이", "부자 할아버지", "방귀 며느리", "지혜로운 오누이", "팥죽 할머니와 물건들", "도사 전우치"],
+      action: ["성실하게 밭을 갈던 순간", "탐욕으로 코를 늘린 행동", "방귀 힘으로 상인을 도운 일", "지혜롭게 위기를 극복한 모습", "힘을 모아 호랑이를 물리친 협동", "도술로 가난한 백성을 구한 행동"],
+      feeling: ["나의 모습을 반성하게 되었다", "참 대단하고 지혜롭다고 느꼈다", "나도 꼭 본받아야겠다고 생각했다", "협동의 힘이 크다는 걸 깨달았다", "마음이 정말 따뜻해졌다"],
+      citizenValue: ["맡은 일에 책임을 다하는", "지나친 탐욕을 부리지 않는", "이웃과 공공의 이익을 배려하는", "다양성과 다름을 존중하는", "약자를 보호하고 연대하는", "사회 정의와 공정함을 지키는"]
+    };
+
+    function App() {
+      const [currentView, setCurrentView] = useState('library');
+      const [selectedBook, setSelectedBook] = useState(null);
+      
+      const [sessionStep, setSessionStep] = useState(1);
+      const [step1Mode, setStep1Mode] = useState('slides');
+
+      const [slideIdx, setSlideIdx] = useState(0);
+      const [isSpeaking, setIsSpeaking] = useState(false);
+
+      useEffect(() => {
+        stopSpeaking();
+        setIsSpeaking(false);
+      }, [currentView, sessionStep, slideIdx, step1Mode]);
+
+      const handleToggleSpeech = (text) => {
+        if (isSpeaking) {
+          stopSpeaking();
+          setIsSpeaking(false);
+        } else {
+          speakText(
+            text,
+            () => setIsSpeaking(true),
+            () => setIsSpeaking(false)
+          );
+        }
+      };
+
+      const [selectedLeft, setSelectedLeft] = useState(null);
+      const [matchedPairs, setMatchedPairs] = useState({});
+      const [matchingError, setMatchingError] = useState(false);
+
+      const [step3Selected, setStep3Selected] = useState(null);
+      const [step4Selected, setStep4Selected] = useState(null);
+
+      const [integratedQuizIdx, setIntegratedQuizIdx] = useState(0);
+      const [integratedAnswers, setIntegratedAnswers] = useState({});
+
+      const [reportBook, setReportBook] = useState(BOOKS_DATA[0].id);
+      const [reportSlot1, setReportSlot1] = useState('');
+      const [reportSlot2, setReportSlot2] = useState('');
+      const [reportSlot3, setReportSlot3] = useState('');
+      const [activeSlot, setActiveSlot] = useState(1);
+      const [savedReports, setSavedReports] = useState([]);
+
+      const [earnedBadges, setEarnedBadges] = useState([]);
+      const [showBadgeModal, setShowBadgeModal] = useState(null);
+
+      const unlockBadge = (badgeName, badgeIcon, description) => {
+        if (!earnedBadges.some(b => b.name === badgeName)) {
+          const newBadge = { name: badgeName, icon: badgeIcon, desc: description };
+          setEarnedBadges(prev => [...prev, newBadge]);
+          setShowBadgeModal(newBadge);
+          playSound('badge');
+        }
+      };
+
+      const startBookSession = (book) => {
+        playSound('click');
+        setSelectedBook(book);
+        setSessionStep(1);
+        setStep1Mode('slides');
+        setSlideIdx(0);
+        setSelectedLeft(null);
+        setMatchedPairs({});
+        setStep3Selected(null);
+        setStep4Selected(null);
+        setCurrentView('book_session');
+      };
+
+      const handleLeftClick = (item) => {
+        playSound('click');
+        setSelectedLeft(item);
+        setMatchingError(false);
+      };
+
+      const handleRightClick = (rightText) => {
+        if (!selectedLeft) return;
+        playSound('click');
+        
+        if (selectedLeft.right === rightText) {
+          playSound('success');
+          setMatchedPairs(prev => ({ ...prev, [selectedLeft.id]: true }));
+          setSelectedLeft(null);
+          setMatchingError(false);
+        } else {
+          playSound('retry');
+          setMatchingError(true);
+        }
+      };
+
+      const isStep2Complete = selectedBook && Object.keys(matchedPairs).length === selectedBook.matchPairs.length;
+
+      const handleStep3Choose = (optIdx) => {
+        setStep3Selected(optIdx);
+        const isCorrect = selectedBook.characterQuiz.options[optIdx].isCorrect;
+        if (isCorrect) playSound('success');
+        else playSound('retry');
+      };
+
+      const handleStep4Choose = (optIdx) => {
+        setStep4Selected(optIdx);
+        const isCorrect = selectedBook.themeQuiz.options[optIdx].isCorrect;
+        if (isCorrect) {
+          playSound('success');
+          unlockBadge(selectedBook.badgeName, selectedBook.badgeIcon, `${selectedBook.title} 학습 완료!`);
+        } else {
+          playSound('retry');
+        }
+      };
+
+      const handleIntegratedChoose = (qIdx, optIdx) => {
+        setIntegratedAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
+        const isCorrect = INTEGRATED_QUIZZES[qIdx].options[optIdx].isCorrect;
+        if (isCorrect) playSound('success');
+        else playSound('retry');
+      };
+
+      const handleSaveReport = () => {
+        if (!reportSlot1 || !reportSlot2 || !reportSlot3) {
+          alert('도움 단어 칩을 눌러 세 가지 빈칸을 모두 채워보세요! 🌱');
+          return;
+        }
+        playSound('badge');
+        const targetBook = BOOKS_DATA.find(b => b.id === reportBook);
+        const newReport = {
+          id: Date.now(),
+          bookTitle: targetBook.title,
+          text: `나는 [${targetBook.title}] 이야기를 읽었습니다. 이 책에서 [${reportSlot1}]을(를) 보니 [${reportSlot2}]라는 생각이 들었습니다. 앞으로 나는 [${reportSlot3}]하는 멋진 민주시민이 되겠습니다!`,
+          date: new Date().toLocaleDateString('ko-KR')
+        };
+        setSavedReports(prev => [newReport, ...prev]);
+        unlockBadge('자랑스러운 감상문 작성가 배지', '✏️', '나만의 독서 감상문 완성!');
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto min-h-screen px-4 py-6 flex flex-col justify-between">
+          {/* Header Bar */}
+          <header className="bg-white rounded-3xl shadow-md border-2 border-amber-200 p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => { playSound('click'); setCurrentView('library'); }}>
+              <span className="text-3xl bg-amber-100 p-2 rounded-2xl">🏫</span>
+              <div>
+                <h1 className="font-jua text-2xl md:text-3xl text-amber-900 leading-tight">생각 쑥쑥 시민 학교</h1>
+                <p className="text-xs md:text-sm font-bold text-amber-600">전래동화 그림책으로 배우는 민주시민 역량</p>
+              </div>
+            </div>
+
+            {/* Earned Badges Quick Bar */}
+            <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-2xl border border-amber-200">
+              <span className="text-sm font-bold text-amber-800">내 배지:</span>
+              <div className="flex gap-1 text-xl">
+                {earnedBadges.length === 0 ? (
+                  <span className="text-xs text-slate-400 font-bold">활동하여 모아보세요!</span>
+                ) : (
+                  earnedBadges.map((b, i) => (
+                    <span key={i} title={b.name} className="bounce-gentle">{b.icon}</span>
+                  ))
+                )}
+              </div>
+            </div>
+          </header>
+
+          {}
+          {currentView === 'library' && (
+            <main className="space-y-8 flex-grow">
+              {/* Top Banner */}
+              <div className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden">
+                <div className="relative z-10">
+                  <span className="bg-white/30 backdrop-blur-md px-3 py-1 rounded-full text-xs md:text-sm font-black tracking-wide uppercase">
+                    느린 학습자 맞춤형 쉬운 전래동화 시민 교육 (6종 완장)
+                  </span>
+                  <h2 className="font-jua text-2xl md:text-4xl mt-2 mb-2">읽고 싶은 그림책을 선택하세요!</h2>
+                  <p className="text-amber-100 text-sm md:text-base font-medium max-w-xl">
+                    재미있는 전래동화 이야기 속 인물들의 행동을 관찰하고, 책임·배려·다양성·연대·협동·정의의 민주시민 가치를 알아봅니다.
+                  </p>
+                </div>
+                <div className="absolute right-4 bottom-2 text-7xl opacity-20 select-none">📚</div>
+              </div>
+
+              {/* 6 Main Picture Book Cards */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {BOOKS_DATA.map((book) => {
+                  const hasBadge = earnedBadges.some(b => b.name === book.badgeName);
+                  return (
+                    <div 
+                      key={book.id}
+                      onClick={() => startBookSession(book)}
+                      className={`cursor-pointer group relative bg-white rounded-3xl border-4 ${book.borderColor} p-6 shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 flex flex-col justify-between`}
+                    >
+                      {hasBadge && (
+                        <div className="absolute top-3 right-3 bg-amber-400 text-amber-950 font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
+                          <span>{book.badgeIcon}</span> 학습 완료
+                        </div>
+                      )}
+                      <div>
+                        <div className={`w-20 h-20 ${book.bgColor} rounded-2xl flex items-center justify-center text-4xl mb-4 shadow-inner mx-auto group-hover:scale-110 transition-transform`}>
+                          {book.icon}
+                        </div>
+                        <h3 className="font-jua text-2xl text-slate-800 text-center mb-1">{book.title}</h3>
+                        <p className="text-xs text-amber-800 font-bold text-center mb-4 bg-amber-50 py-1 px-2 rounded-xl border border-amber-200">
+                          {book.subtitle}
+                        </p>
+                      </div>
+                      <button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-jua text-lg py-3 rounded-2xl shadow-md transition-colors flex items-center justify-center gap-2">
+                        <span>학습 시작하기</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </section>
+
+              {/* Final Integrated Activities Banner */}
+              <section className="bg-white rounded-3xl border-3 border-indigo-200 p-6 shadow-md">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-5xl bg-indigo-100 p-3 rounded-2xl">🏆</span>
+                    <div>
+                      <span className="bg-indigo-100 text-indigo-800 font-bold text-xs px-2 py-1 rounded-md">최종 종합 단계</span>
+                      <h3 className="font-jua text-2xl text-slate-800 mt-1">모두 다 배우셨나요? 최종 통합 활동</h3>
+                      <p className="text-sm text-slate-600">여섯 가지 이야기 섞어 퀴즈 풀기 & 나만의 문장 조립 독서 감상문 쓰기</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 w-full md:w-auto">
+                    <button 
+                      onClick={() => { playSound('click'); setCurrentView('integrated_quiz'); }}
+                      className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-jua text-base px-5 py-3 rounded-2xl shadow transition-colors"
+                    >
+                      🎯 종합 퀴즈
+                    </button>
+                    <button 
+                      onClick={() => { playSound('click'); setCurrentView('book_report'); }}
+                      className="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-jua text-base px-5 py-3 rounded-2xl shadow transition-colors"
+                    >
+                      ✏️ 독서 감상문
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </main>
+          )}
+
+          {}
+          {currentView === 'book_session' && selectedBook && (
+            <main className="bg-white rounded-3xl shadow-lg border-2 border-slate-200 p-6 flex-grow flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+                  <button 
+                    onClick={() => { playSound('click'); setCurrentView('library'); }}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                  >
+                    <span>←</span> 서재로 돌아가기
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl">{selectedBook.icon}</span>
+                    <h2 className="font-jua text-2xl text-slate-800">{selectedBook.title}</h2>
+                  </div>
+                </div>
+
+                {/* 4 Steps Visual Stepper Header */}
+                <div className="grid grid-cols-4 gap-2 mb-8">
+                  {[
+                    { step: 1, title: '1. 줄거리' },
+                    { step: 2, title: '2. 행동 연결' },
+                    { step: 3, title: '3. 성격 알기' },
+                    { step: 4, title: '4. 핵심 가치' },
+                  ].map((s) => (
+                    <div 
+                      key={s.step} 
+                      className={`text-center py-2 px-1 rounded-xl text-xs md:text-sm font-bold border-2 transition-all ${
+                        sessionStep === s.step 
+                          ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md scale-105' 
+                          : sessionStep > s.step 
+                          ? 'bg-emerald-100 border-emerald-300 text-emerald-800' 
+                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      {s.title}
+                    </div>
+                  ))}
+                </div>
+
+                {/* STEP 1: 이야기 줄거리 확인하기 */}
+                {sessionStep === 1 && (
+                  <div className="space-y-6">
+                    <div className="flex justify-center gap-3 mb-4">
+                      <button
+                        onClick={() => { playSound('click'); setStep1Mode('slides'); }}
+                        className={`px-5 py-2.5 rounded-2xl font-jua text-base md:text-lg border-2 transition-all flex items-center gap-2 ${
+                          step1Mode === 'slides'
+                            ? 'bg-amber-500 border-amber-600 text-white shadow-md'
+                            : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>📖</span> 6장면 카드 & 음성 읽기
+                      </button>
+                      <button
+                        onClick={() => { playSound('click'); setStep1Mode('video'); }}
+                        className={`px-5 py-2.5 rounded-2xl font-jua text-base md:text-lg border-2 transition-all flex items-center gap-2 ${
+                          step1Mode === 'video'
+                            ? 'bg-red-500 border-red-600 text-white shadow-md'
+                            : 'bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>🎬</span> 유튜브 동화 영상 보기
+                      </button>
+                    </div>
+
+                    {step1Mode === 'slides' ? (
+                      <div className="space-y-6">
+                        <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 text-center shadow-inner relative">
+                          <div className="text-8xl my-4 select-none animate-pulse">
+                            {selectedBook.slides[slideIdx].image}
+                          </div>
+                          <p className="font-bold text-xl md:text-2xl text-slate-800 leading-relaxed mb-4 max-w-xl mx-auto">
+                            "{selectedBook.slides[slideIdx].text}"
+                          </p>
+                          
+                          <button 
+                            onClick={() => handleToggleSpeech(selectedBook.slides[slideIdx].text)}
+                            className={`inline-flex items-center gap-2 font-bold text-base px-6 py-3 rounded-full shadow-md transition-all ${
+                              isSpeaking 
+                                ? 'bg-rose-500 hover:bg-rose-600 text-white ring-4 ring-rose-200 animate-pulse'
+                                : 'bg-amber-500 hover:bg-amber-600 text-white'
+                            }`}
+                          >
+                            <span>{isSpeaking ? '⏹️ 음성 멈추기' : '🔊 자연스러운 음성 읽기'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                          <button 
+                            disabled={slideIdx === 0}
+                            onClick={() => { playSound('click'); setSlideIdx(prev => prev - 1); }}
+                            className={`font-jua text-lg px-5 py-2.5 rounded-2xl border-2 ${
+                              slideIdx === 0 ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-white border-amber-300 text-amber-800 hover:bg-amber-50'
+                            }`}
+                          >
+                            ◀ 이전 장면
+                          </button>
+
+                          <span className="font-bold text-slate-600 text-base bg-amber-100 px-4 py-1.5 rounded-full border border-amber-300">
+                            장면 {slideIdx + 1} / {selectedBook.slides.length}
+                          </span>
+
+                          {slideIdx < selectedBook.slides.length - 1 ? (
+                            <button 
+                              onClick={() => { playSound('click'); setSlideIdx(prev => prev + 1); }}
+                              className="font-jua text-lg px-5 py-2.5 rounded-2xl bg-amber-500 text-white hover:bg-amber-600 shadow-md"
+                            >
+                              다음 장면 ▶
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => { playSound('click'); setSessionStep(2); }}
+                              className="font-jua text-lg px-6 py-2.5 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 shadow-md animate-bounce"
+                            >
+                              2단계: 행동 연결하기 ➔
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-xl border-4 border-amber-300 bg-black">
+                          <iframe 
+                            src={`https://www.youtube-nocookie.com/embed/${selectedBook.youtubeId}?rel=0&modestbranding=1`}
+                            title={selectedBook.title}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            allowFullScreen
+                          ></iframe>
+                        </div>
+
+                        <div className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 text-red-900 font-bold text-sm md:text-base">
+                            <span className="text-2xl">📺</span>
+                            <span>영상이 바로 재생되지 않으면 유튜브 연결 버튼을 이용하세요!</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a
+                              href={`https://www.youtube.com/watch?v=${selectedBook.youtubeId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-red-600 hover:bg-red-700 text-white font-jua text-sm md:text-base px-4 py-2.5 rounded-2xl shadow transition-colors flex items-center gap-1"
+                            >
+                              ▶ 유튜브에서 직접 보기
+                            </a>
+                            <button 
+                              onClick={() => { playSound('click'); setSessionStep(2); }}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-jua text-sm md:text-base px-4 py-2.5 rounded-2xl shadow-md"
+                            >
+                              2단계 이동 ➔
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* STEP 2: 등장인물과 행동 연결하기 */}
+                {sessionStep === 2 && (
+                  <div className="space-y-6">
+                    <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 flex items-center justify-between">
+                      <p className="text-indigo-900 font-bold text-base md:text-lg">
+                        💡 왼쪽의 등장인물을 먼저 누르고, 그 인물이 한 행동 카드(우측)를 연결해 보세요!
+                      </p>
+                      <button 
+                        onClick={() => handleToggleSpeech("왼쪽의 등장인물을 먼저 누르고, 그 인물이 한 행동 카드를 연결해 보세요!")}
+                        className="bg-indigo-200 text-indigo-800 p-2 rounded-xl text-sm font-bold hover:bg-indigo-300 shrink-0 ml-2"
+                      >
+                        🔊 설명 듣기
+                      </button>
+                    </div>
+
+                    {matchingError && (
+                      <div className="bg-rose-100 border border-rose-300 text-rose-800 px-4 py-3 rounded-2xl text-center font-bold text-sm animate-shake">
+                        😅 알맞은 짝이 아니에요. 다시 생각해보고 시도해 보세요!
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <h4 className="font-jua text-lg text-slate-700 text-center">등장인물 (좌측)</h4>
+                        {selectedBook.matchPairs.map((pair) => {
+                          const isMatched = matchedPairs[pair.id];
+                          const isSelected = selectedLeft?.id === pair.id;
+                          return (
+                            <button
+                              key={pair.id}
+                              disabled={isMatched}
+                              onClick={() => handleLeftClick(pair)}
+                              className={`w-full p-4 rounded-2xl font-bold text-lg text-left transition-all border-3 flex items-center justify-between ${
+                                isMatched 
+                                  ? 'bg-emerald-100 border-emerald-400 text-emerald-800 opacity-60'
+                                  : isSelected
+                                  ? 'bg-amber-300 border-amber-500 text-amber-950 scale-102 shadow-lg ring-4 ring-amber-200'
+                                  : 'bg-white border-amber-200 hover:bg-amber-50 text-slate-800 shadow'
+                              }`}
+                            >
+                              <span>👤 {pair.left}</span>
+                              {isMatched && <span>✅</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-jua text-lg text-slate-700 text-center">인물의 행동 (우측)</h4>
+                        {selectedBook.matchPairs.map((pair) => {
+                          const isMatched = Object.keys(matchedPairs).some(
+                            id => selectedBook.matchPairs.find(m => m.id === id)?.right === pair.right
+                          );
+                          return (
+                            <button
+                              key={pair.id}
+                              disabled={isMatched}
+                              onClick={() => handleRightClick(pair.right)}
+                              className={`w-full p-4 rounded-2xl font-medium text-base text-left transition-all border-3 flex items-center justify-between ${
+                                isMatched 
+                                  ? 'bg-emerald-100 border-emerald-400 text-emerald-800 opacity-60'
+                                  : 'bg-white border-indigo-200 hover:bg-indigo-50 text-slate-800 shadow cursor-pointer'
+                              }`}
+                            >
+                              <span>{pair.right}</span>
+                              {isMatched && <span>✅</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {isStep2Complete && (
+                      <div className="bg-emerald-100 border-2 border-emerald-400 rounded-2xl p-4 text-center mt-6">
+                        <p className="font-jua text-xl text-emerald-900 mb-3">🎉 대단해요! 모든 행동을 올바르게 연결했습니다!</p>
+                        <button 
+                          onClick={() => { playSound('click'); setSessionStep(3); }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-jua text-lg px-6 py-3 rounded-2xl shadow-md transition-colors"
+                        >
+                          3단계: 등장인물 성격 알기 ➔
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* STEP 3: 등장인물의 성격 알기 */}
+                {sessionStep === 3 && (
+                  <div className="space-y-6">
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="bg-amber-200 text-amber-900 font-bold text-xs px-3 py-1 rounded-full">
+                          비판적 시민 사고력
+                        </span>
+                        <button 
+                          onClick={() => speak(selectedBook.characterQuiz.question)}
+                          className="bg-amber-200 text-amber-900 px-3 py-1 rounded-xl text-xs font-bold"
+                        >
+                          🔊 질문 읽기
+                        </button>
+                      </div>
+                      <h3 className="font-jua text-2xl text-slate-800 mb-6 leading-relaxed">
+                        Q. {selectedBook.characterQuiz.question}
+                      </h3>
+
+                      <div className="space-y-3">
+                        {selectedBook.characterQuiz.options.map((opt, idx) => {
+                          const isSelected = step3Selected === idx;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleStep3Choose(idx)}
+                              className={`w-full p-4 rounded-2xl text-left font-bold text-base md:text-lg border-3 transition-all flex items-start gap-3 ${
+                                isSelected
+                                  ? opt.isCorrect
+                                    ? 'bg-emerald-100 border-emerald-500 text-emerald-900 shadow-lg'
+                                    : 'bg-rose-100 border-rose-400 text-rose-900'
+                                  : 'bg-white border-slate-200 hover:border-amber-300 text-slate-800 shadow'
+                              }`}
+                            >
+                              <span className="bg-amber-100 text-amber-800 rounded-full w-7 h-7 flex items-center justify-center shrink-0 text-sm">
+                                {idx + 1}
+                              </span>
+                              <div className="flex-grow">
+                                <p>{opt.text}</p>
+                                {isSelected && (
+                                  <p className={`text-xs mt-2 font-medium p-2 rounded-xl ${opt.isCorrect ? 'bg-emerald-200/60 text-emerald-950' : 'bg-rose-200/60 text-rose-950'}`}>
+                                    💡 {opt.rationale}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {step3Selected !== null && selectedBook.characterQuiz.options[step3Selected].isCorrect && (
+                      <div className="text-right">
+                        <button 
+                          onClick={() => { playSound('click'); setSessionStep(4); }}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-jua text-lg px-6 py-3 rounded-2xl shadow-md transition-colors"
+                        >
+                          4단계: 이야기의 주제 배우기 ➔
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* STEP 4: 교훈 및 핵심 가치 내재화 */}
+                {sessionStep === 4 && (
+                  <div className="space-y-6">
+                    <div className="bg-indigo-50 border-2 border-indigo-300 rounded-3xl p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <span className="bg-indigo-200 text-indigo-900 font-bold text-xs px-3 py-1 rounded-full">
+                          민주시민 핵심 가치 내재화
+                        </span>
+                        <button 
+                          onClick={() => speak(selectedBook.themeQuiz.question)}
+                          className="bg-indigo-200 text-indigo-900 px-3 py-1 rounded-xl text-xs font-bold"
+                        >
+                          🔊 질문 읽기
+                        </button>
+                      </div>
+                      <h3 className="font-jua text-2xl text-slate-800 mb-6 leading-relaxed">
+                        Q. {selectedBook.themeQuiz.question}
+                      </h3>
+
+                      <div className="space-y-3">
+                        {selectedBook.themeQuiz.options.map((opt, idx) => {
+                          const isSelected = step4Selected === idx;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleStep4Choose(idx)}
+                              className={`w-full p-4 rounded-2xl text-left font-bold text-base md:text-lg border-3 transition-all flex items-start gap-3 ${
+                                isSelected
+                                  ? opt.isCorrect
+                                    ? 'bg-emerald-100 border-emerald-500 text-emerald-900 shadow-lg'
+                                    : 'bg-rose-100 border-rose-400 text-rose-900'
+                                  : 'bg-white border-slate-200 hover:border-indigo-300 text-slate-800 shadow'
+                              }`}
+                            >
+                              <span className="bg-indigo-100 text-indigo-800 rounded-full w-7 h-7 flex items-center justify-center shrink-0 text-sm">
+                                {idx + 1}
+                              </span>
+                              <div className="flex-grow">
+                                <p>{opt.text}</p>
+                                {isSelected && (
+                                  <p className={`text-xs mt-2 font-medium p-2 rounded-xl ${opt.isCorrect ? 'bg-emerald-200/60 text-emerald-950' : 'bg-rose-200/60 text-rose-950'}`}>
+                                    💡 {opt.rationale}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {step4Selected !== null && selectedBook.themeQuiz.options[step4Selected].isCorrect && (
+                      <div className="bg-amber-100 border-2 border-amber-400 rounded-2xl p-6 text-center space-y-4">
+                        <div className="text-5xl">{selectedBook.badgeIcon}</div>
+                        <h4 className="font-jua text-2xl text-amber-900">축하합니다! '{selectedBook.badgeName}' 획득!</h4>
+                        <p className="text-sm text-amber-800 font-medium">
+                          그림책을 통해 민주시민의 소중한 가치를 성공적으로 배웠습니다.
+                        </p>
+                        <div className="flex justify-center gap-3 pt-2">
+                          <button 
+                            onClick={() => { playSound('click'); setCurrentView('library'); }}
+                            className="bg-amber-500 hover:bg-amber-600 text-white font-jua text-lg px-6 py-3 rounded-2xl shadow transition-colors"
+                          >
+                            서재로 가서 다른 책 읽기
+                          </button>
+                          <button 
+                            onClick={() => { playSound('click'); setCurrentView('book_report'); }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-jua text-lg px-6 py-3 rounded-2xl shadow transition-colors"
+                          >
+                            독서 감상문 쓰러 가기 ➔
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </main>
+          )}
+
+          {}
+          {currentView === 'integrated_quiz' && (
+            <main className="bg-white rounded-3xl shadow-lg border-2 border-indigo-200 p-6 flex-grow flex flex-col justify-between space-y-6">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+                  <button 
+                    onClick={() => { playSound('click'); setCurrentView('library'); }}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                  >
+                    <span>←</span> 서재로 돌아가기
+                  </button>
+                  <h2 className="font-jua text-2xl text-indigo-900 flex items-center gap-2">
+                    <span>🎯</span> 여섯 이야기 섞어 확인하기 (통합 퀴즈)
+                  </h2>
+                </div>
+
+                <div className="bg-indigo-50 border-2 border-indigo-200 rounded-3xl p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="bg-indigo-200 text-indigo-900 font-bold text-xs px-3 py-1 rounded-full">
+                      문제 {integratedQuizIdx + 1} / {INTEGRATED_QUIZZES.length}
+                    </span>
+                    <button 
+                      onClick={() => speak(INTEGRATED_QUIZZES[integratedQuizIdx].question)}
+                      className="bg-indigo-200 text-indigo-900 px-3 py-1 rounded-xl text-xs font-bold"
+                    >
+                      🔊 문제 들어보기
+                    </button>
+                  </div>
+
+                  <h3 className="font-jua text-2xl text-slate-800 mb-6 leading-relaxed">
+                    Q. {INTEGRATED_QUIZZES[integratedQuizIdx].question}
+                  </h3>
+
+                  <div className="space-y-3">
+                    {INTEGRATED_QUIZZES[integratedQuizIdx].options.map((opt, optIdx) => {
+                      const selectedOpt = integratedAnswers[integratedQuizIdx];
+                      const isSelected = selectedOpt === optIdx;
+                      return (
+                        <button
+                          key={optIdx}
+                          onClick={() => handleIntegratedChoose(integratedQuizIdx, optIdx)}
+                          className={`w-full p-4 rounded-2xl text-left font-bold text-lg border-3 transition-all flex items-start gap-3 ${
+                            isSelected
+                              ? opt.isCorrect
+                                ? 'bg-emerald-100 border-emerald-500 text-emerald-900 shadow-lg'
+                                : 'bg-rose-100 border-rose-400 text-rose-900'
+                              : 'bg-white border-slate-200 hover:border-indigo-300 text-slate-800 shadow'
+                          }`}
+                        >
+                          <span className="bg-indigo-100 text-indigo-800 rounded-full w-7 h-7 flex items-center justify-center shrink-0 text-sm">
+                            {optIdx + 1}
+                          </span>
+                          <div className="flex-grow">
+                            <p>{opt.text}</p>
+                            {isSelected && (
+                              <p className={`text-xs mt-2 font-medium p-2 rounded-xl ${opt.isCorrect ? 'bg-emerald-200/60 text-emerald-950' : 'bg-rose-200/60 text-rose-950'}`}>
+                                💡 {opt.rationale}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-4">
+                <button
+                  disabled={integratedQuizIdx === 0}
+                  onClick={() => { playSound('click'); setIntegratedQuizIdx(prev => prev - 1); }}
+                  className={`font-jua text-lg px-5 py-2.5 rounded-2xl border-2 ${
+                    integratedQuizIdx === 0 ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-white border-indigo-300 text-indigo-800 hover:bg-indigo-50'
+                  }`}
+                >
+                  ◀ 이전 문제
+                </button>
+
+                {integratedQuizIdx < INTEGRATED_QUIZZES.length - 1 ? (
+                  <button
+                    disabled={integratedAnswers[integratedQuizIdx] === undefined}
+                    onClick={() => { playSound('click'); setIntegratedQuizIdx(prev => prev + 1); }}
+                    className={`font-jua text-lg px-6 py-2.5 rounded-2xl ${
+                      integratedAnswers[integratedQuizIdx] === undefined
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md'
+                    }`}
+                  >
+                    다음 문제 ▶
+                  </button>
+                ) : (
+                  <button
+                    disabled={integratedAnswers[integratedQuizIdx] === undefined}
+                    onClick={() => {
+                      unlockBadge('민주시민 퀴즈 박사 배지', '🎓', '통합 민주시민 퀴즈 완주!');
+                      alert('🎉 종합 퀴즈를 모두 완료했습니다! 축하합니다!');
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-jua text-lg px-6 py-2.5 rounded-2xl shadow-md"
+                  >
+                    퀴즈 결과 완성! 🏆
+                  </button>
+                )}
+              </div>
+            </main>
+          )}
+
+          {}
+          {currentView === 'book_report' && (
+            <main className="bg-white rounded-3xl shadow-lg border-2 border-emerald-200 p-6 flex-grow flex flex-col justify-between space-y-6">
+              <div>
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+                  <button 
+                    onClick={() => { playSound('click'); setCurrentView('library'); }}
+                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+                  >
+                    <span>←</span> 서재로 돌아가기
+                  </button>
+                  <h2 className="font-jua text-2xl text-emerald-900 flex items-center gap-2">
+                    <span>✏️</span> 단어 힌트 활용 독서 감상문 쓰기
+                  </h2>
+                </div>
+
+                {/* Step 1: Book Selector */}
+                <div className="mb-6">
+                  <label className="block font-jua text-lg text-slate-700 mb-2">
+                    1. 감상문을 쓰고 싶은 그림책을 선택하세요:
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {BOOKS_DATA.map((book) => (
+                      <button
+                        key={book.id}
+                        onClick={() => { playSound('click'); setReportBook(book.id); }}
+                        className={`p-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 border-2 transition-all ${
+                          reportBook === book.id
+                            ? 'bg-emerald-500 text-white border-emerald-600 shadow-md scale-102'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <span>{book.icon}</span>
+                        <span className="truncate">{book.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Step 2: Interactive Scaffolding Sentence Box */}
+                <div className="bg-emerald-50 border-3 border-emerald-300 rounded-3xl p-6 shadow-inner space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <span className="font-jua text-lg text-emerald-900">📝 내 독서 감상문 (문장 조립 중)</span>
+                    <button 
+                      onClick={() => {
+                        const bookTitle = BOOKS_DATA.find(b => b.id === reportBook).title;
+                        const fullText = `나는 ${bookTitle} 이야기를 읽었습니다. 이 책에서 ${reportSlot1 || '___'}을 보고 ${reportSlot2 || '___'}라는 생각이 들었습니다. 앞으로 나는 ${reportSlot3 || '___'}하는 민주시민이 되겠습니다.`;
+                        speak(fullText);
+                      }}
+                      className="bg-emerald-200 text-emerald-900 px-3 py-1 rounded-xl text-xs font-bold hover:bg-emerald-300"
+                    >
+                      🔊 완성된 문장 읽기
+                    </button>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 text-lg md:text-xl font-medium leading-loose text-slate-800">
+                    <span>나는 </span>
+                    <span className="font-bold text-emerald-800 underline decoration-emerald-400 decoration-2 px-1">
+                      [{BOOKS_DATA.find(b => b.id === reportBook).title}]
+                    </span>
+                    <span> 이야기를 읽었다. 이 책에서 </span>
+                    
+                    {/* Slot 1 */}
+                    <span 
+                      onClick={() => setActiveSlot(1)}
+                      className={`cursor-pointer inline-block border-b-4 px-3 py-1 rounded-xl mx-1 font-bold transition-all ${
+                        activeSlot === 1 
+                          ? 'bg-amber-200 border-amber-500 text-amber-950 ring-2 ring-amber-300' 
+                          : reportSlot1 
+                          ? 'bg-emerald-100 border-emerald-400 text-emerald-900' 
+                          : 'bg-slate-100 border-slate-300 text-slate-400'
+                      }`}
+                    >
+                      {reportSlot1 || '(1. 인물/행동 터치)'}
+                    </span>
+                    
+                    <span>을(를) 보니 </span>
+
+                    {/* Slot 2 */}
+                    <span 
+                      onClick={() => setActiveSlot(2)}
+                      className={`cursor-pointer inline-block border-b-4 px-3 py-1 rounded-xl mx-1 font-bold transition-all ${
+                        activeSlot === 2 
+                          ? 'bg-amber-200 border-amber-500 text-amber-950 ring-2 ring-amber-300' 
+                          : reportSlot2 
+                          ? 'bg-emerald-100 border-emerald-400 text-emerald-900' 
+                          : 'bg-slate-100 border-slate-300 text-slate-400'
+                      }`}
+                    >
+                      {reportSlot2 || '(2. 나의 느낌 터치)'}
+                    </span>
+
+                    <span>라는 생각이 들었다. 앞으로 나는 </span>
+
+                    {/* Slot 3 */}
+                    <span 
+                      onClick={() => setActiveSlot(3)}
+                      className={`cursor-pointer inline-block border-b-4 px-3 py-1 rounded-xl mx-1 font-bold transition-all ${
+                        activeSlot === 3 
+                          ? 'bg-amber-200 border-amber-500 text-amber-950 ring-2 ring-amber-300' 
+                          : reportSlot3 
+                          ? 'bg-emerald-100 border-emerald-400 text-emerald-900' 
+                          : 'bg-slate-100 border-slate-300 text-slate-400'
+                      }`}
+                    >
+                      {reportSlot3 || '(3. 시민 가치 터치)'}
+                    </span>
+
+                    <span>하는 민주시민이 되겠다!</span>
+                  </div>
+                </div>
+
+                {/* Step 3: Word Bank Chips Categorized */}
+                <div className="bg-slate-50 border-2 border-slate-200 rounded-3xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-jua text-base text-slate-700">
+                      💡 도움 단어 칩 (원하는 단어를 터치하면 빈칸에 자동으로 들어갑니다)
+                    </span>
+                    <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-1 rounded-lg">
+                      현재 선택된 빈칸: [{activeSlot === 1 ? '1. 인물/행동' : activeSlot === 2 ? '2. 나의 느낌' : '3. 시민 가치'}]
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 mb-1">인물 / 행동 단어:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {WORD_BANK.person.concat(WORD_BANK.action).map((word, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              playSound('click');
+                              setReportSlot1(word);
+                              setActiveSlot(2);
+                            }}
+                            className="bg-white hover:bg-amber-100 border-2 border-amber-300 text-slate-800 font-bold text-sm px-3 py-1.5 rounded-xl shadow-sm transition-all transform active:scale-95"
+                          >
+                            + {word}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 mb-1">나의 느낌 단어:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {WORD_BANK.feeling.map((word, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              playSound('click');
+                              setReportSlot2(word);
+                              setActiveSlot(3);
+                            }}
+                            className="bg-white hover:bg-indigo-100 border-2 border-indigo-300 text-slate-800 font-bold text-sm px-3 py-1.5 rounded-xl shadow-sm transition-all transform active:scale-95"
+                          >
+                            + {word}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 mb-1">민주시민 가치 단어:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {WORD_BANK.citizenValue.map((word, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              playSound('click');
+                              setReportSlot3(word);
+                            }}
+                            className="bg-white hover:bg-emerald-100 border-2 border-emerald-300 text-slate-800 font-bold text-sm px-3 py-1.5 rounded-xl shadow-sm transition-all transform active:scale-95"
+                          >
+                            + {word}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <button
+                  onClick={handleSaveReport}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-jua text-xl px-8 py-3.5 rounded-2xl shadow-lg transition-transform transform active:scale-95 flex items-center gap-2"
+                >
+                  <span>🎉</span>
+                  <span>독서 감상문 완성하고 배지 받기</span>
+                </button>
+              </div>
+
+              {savedReports.length > 0 && (
+                <div className="pt-6 border-t border-slate-200">
+                  <h4 className="font-jua text-xl text-slate-800 mb-3">📜 내가 완성한 감상문 포트폴리오</h4>
+                  <div className="space-y-3">
+                    {savedReports.map((rep) => (
+                      <div key={rep.id} className="bg-amber-50/60 border border-amber-200 p-4 rounded-2xl">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-bold text-amber-900">{rep.bookTitle}</span>
+                          <span className="text-xs text-slate-400">{rep.date}</span>
+                        </div>
+                        <p className="text-sm text-slate-700 font-medium leading-relaxed">{rep.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </main>
+          )}
+
+          {}
+          {showBadgeModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white border-4 border-amber-400 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl relative space-y-4 transform scale-105 transition-transform">
+                <div className="text-7xl bounce-gentle">{showBadgeModal.icon}</div>
+                <span className="bg-amber-100 text-amber-900 font-bold text-xs px-3 py-1 rounded-full inline-block">
+                  새로운 배지 획득!
+                </span>
+                <h3 className="font-jua text-2xl text-slate-800">{showBadgeModal.name}</h3>
+                <p className="text-sm text-slate-600">{showBadgeModal.desc}</p>
+                <button
+                  onClick={() => { playSound('click'); setShowBadgeModal(null); }}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-jua text-lg py-3 rounded-2xl shadow transition-colors"
+                >
+                  멋져요! 확인
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="mt-8 text-center text-xs text-slate-400 font-medium py-4">
+            생각 쑥쑥 시민 학교 — 느린 학습자를 위한 전래동화 그림책 기반 민주시민 역량 강화 웹앱
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
